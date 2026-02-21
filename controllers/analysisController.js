@@ -38,13 +38,13 @@ exports.analyzePregnancy = async (req, res) => {
         // 3. USE THE CORRECT METHOD FOR THE NEW SDK
         // The new SDK uses "ai.models.generateContent", NOT "model.generateContent" directly
         const response = await ai.models.generateContent({
-            model: 'gemini-1.5-pro', // We switched to Pro as you requested
+            model: 'gemini-2.5-flash',
             contents: prompt,
         });
 
         // 4. CLEAN THE RESPONSE
-        // The new SDK response structure is slightly different
-        let aiText = response.text(); 
+        // In the new SDK, we must access the candidates array directly.
+        const aiText = response.candidates[0].content.parts[0].text;
         let cleanedText = aiText.replace(/```json/g, '').replace(/```/g, '').trim();
         const analysisData = JSON.parse(cleanedText);
 
