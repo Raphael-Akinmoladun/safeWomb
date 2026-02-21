@@ -1,60 +1,69 @@
-const { GoogleGenerativeAI } = require("@google/genai");
+// The new SDK exports "GoogleGenAI"
+const { GoogleGenAI } = require('@google/genai');
 const HealthLog = require('../models/HealthLog');
 require('dotenv').config();
 
-// Initialize Gemini
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+// 2. INITIALIZE WITH THE NEW CLASS
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 exports.analyzePregnancy = async (req, res) => {
     try {
         const { week, symptoms, userId } = req.body;
 
-        // 1. Validate Input
         if (!week || !symptoms) {
-            return res.status(400).json({ error: "Please provide pregnancy week and symptoms." });
+            return res.status(400).json({ error: "Please provide both 'week' and 'symptoms'." });
         }
 
-        // 2. Construct the Prompt
-        // We act as a medical expert and demand PURE JSON output.
         const prompt = `
             Act as a compassionate, expert obstetrician for 'safeWomb AI'.
-            
             Patient Data:
             - Pregnancy Week: ${week}
             - Current Symptoms: "${symptoms}"
 
-            Task: Analyze this and return a strictly valid JSON object (no markdown formatting).
-            The JSON must have this exact structure:
+            Task: Analyze this and return a strictly valid JSON object. 
+            Do not include markdown, code blocks, or extra text. Return ONLY the raw JSON.
+            
+            The JSON must have exactly these keys:
             {
-                "babyUpdate": "One distinct, exciting sentence about the baby's development this specific week.",
-                "momUpdate": "One distinct sentence about what the mother's body is doing.",
-                "tips": ["Tip 1", "Tip 2", "Tip 3 (related to her symptoms)"],
-                "riskLevel": "Low" | "Medium" | "High",
+                "babyUpdate": "One sentence about how the baby is developing this week.",
+                "momUpdate": "One sentence about what the mother's body is experiencing.",
+                "tips": ["Tip 1", "Tip 2", "Tip 3 (must be related to her symptoms)"],
+                "riskLevel": "Low", "Medium", or "High",
                 "advice": "Clear, actionable medical advice based on the symptoms."
             }
         `;
 
-        // 3. Call Gemini
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-        const result = await model.generateContent(prompt);
-        const responseText = result.response.text();
+        console.log("Sending symptoms to Gemini...");
+        
+        // 3. USE THE CORRECT METHOD FOR THE NEW SDK
+        // The new SDK uses "ai.models.generateContent", NOT "model.generateContent" directly
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+        });
 
-        // 4. Clean the Response (Crucial Hackathon Step!)
-        // AI sometimes wraps JSON in markdown (```json ... ```). We must remove that.
-        const cleanedText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+        // 4. CLEAN THE RESPONSE
+        // In the new SDK, we must access the candidates array directly.
+        const aiText = response.candidates[0].content.parts[0].text;
+        let cleanedText = aiText.replace(/```json/g, '').replace(/```/g, '').trim();
         const analysisData = JSON.parse(cleanedText);
 
-        // 5. Save to Database (The Memory)
         const newLog = new HealthLog({
+<<<<<<< HEAD
             
             userId: userId || "Anonymous",
             week,
             symptoms,
+=======
+            userId: userId || "AnonymousUser",
+            week: week,
+            symptoms: symptoms,
+>>>>>>> 970cefc15f0d35f4f9e84cf5e8566fd634a5ad56
             aiAnalysis: analysisData
         });
         await newLog.save();
+        console.log("Saved to MongoDB!");
 
-        // 6. Send to Frontend
         res.status(200).json({
             success: true,
             data: analysisData,
@@ -62,7 +71,7 @@ exports.analyzePregnancy = async (req, res) => {
         });
 
     } catch (error) {
-        console.error("AI Error:", error);
+        console.error("Controller Error:", error);
         res.status(500).json({ 
             success: false, 
             message: "Failed to generate analysis", 
