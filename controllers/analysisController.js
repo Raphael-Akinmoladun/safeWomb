@@ -46,6 +46,7 @@ exports.analyzePregnancy = async (req, res) => {
 
         // 5. Save to Database (The Memory)
         const newLog = new HealthLog({
+            
             userId: userId || "Anonymous",
             week,
             symptoms,
