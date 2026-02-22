@@ -127,35 +127,18 @@ export default function SafeWombDashboard() {
     ]).start();
   }, []);
 
-  const calculatePregnancyWeek = (dueDateString: string) => {
-    const due = new Date(dueDateString);
-    const today = new Date();
-    const diffTime = due.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    const weeksLeft = Math.floor(diffDays / 7);
-    let calculatedWeek = 40 - weeksLeft;
-
-    if (calculatedWeek < 1) return 1;
-    if (calculatedWeek > 42) return 42;
-    return calculatedWeek;
-  };
-
-  let currentWeek = calculatePregnancyWeek(dueDate);
-  if (overrideWeek !== null && !isNaN(overrideWeek)) {
-    currentWeek = overrideWeek;
-  }
 
   const calculateChildAge = (dobString: string) => {
     const dob = new Date(dobString);
     const today = new Date();
     const diffTime = today.getTime() - dob.getTime();
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays < 7) return { value: diffDays, label: "Days old" };
-    
+
     const diffWeeks = Math.floor(diffDays / 7);
     if (diffWeeks < 12) return { value: diffWeeks, label: "Weeks old" };
-    
+
     const diffMonths = Math.floor(diffDays / 30.44);
     return { value: diffMonths, label: "Months old" };
   };
@@ -203,7 +186,7 @@ export default function SafeWombDashboard() {
   // 📍 UPDATED: Now it accepts a week, overrides the UI, and auto-calculates the new due date!
   const saveNewWeek = () => {
     const parsedWeek = parseInt(tempWeek);
-    
+
     // Check if it's a valid pregnancy week (1 to 42)
     if (!isNaN(parsedWeek) && parsedWeek >= 1 && parsedWeek <= 42) {
       setOverrideWeek(parsedWeek);
@@ -212,11 +195,11 @@ export default function SafeWombDashboard() {
       const today = new Date();
       const daysLeft = (40 - parsedWeek) * 7;
       today.setDate(today.getDate() + daysLeft);
-      
+
       const newDueString = today.toISOString().split('T')[0];
       setDueDate(newDueString);
     }
-    
+
     setShowDateModal(false);
     setTempWeek(""); // Clear the input box for next time
   };
@@ -283,16 +266,16 @@ export default function SafeWombDashboard() {
           <View style={[styles.modalCard, { width: 300, padding: 20 }]}>
             <Text style={styles.modalTitle}>Update Timeline</Text>
             <Text style={[styles.modalText, { marginBottom: 10 }]}>What week of pregnancy are you in? (1 - 42)</Text>
-            
-            <TextInput 
-              style={styles.dateInput} 
-              placeholder="e.g., 15" 
-              value={tempWeek} 
-              onChangeText={setTempWeek} 
-              keyboardType="numeric" 
-              maxLength={2} 
+
+            <TextInput
+              style={styles.dateInput}
+              placeholder="e.g., 15"
+              value={tempWeek}
+              onChangeText={setTempWeek}
+              keyboardType="numeric"
+              maxLength={2}
             />
-            
+
             <TouchableOpacity style={[styles.modalButton, { marginTop: 15 }]} onPress={saveNewWeek}>
               <Text style={styles.modalButtonText}>Save Week</Text>
             </TouchableOpacity>
@@ -418,7 +401,7 @@ export default function SafeWombDashboard() {
               </View>
 
               <Text style={styles.sectionTitle}>What to Expect</Text>
-              
+
               {latestAiResponse && (
                 <>
                   <Text style={styles.sectionTitle}>✨ Latest AI Insight</Text>
@@ -430,16 +413,16 @@ export default function SafeWombDashboard() {
                   </View>
                 </>
               )}
-              
+
               {/* Note the proper closing of the topRow view here to prevent layout breaks! */}
               <View style={styles.topRow}>
-                <View style={[styles.card, { flex: 1, backgroundColor: '#e0f2fe' }]}> 
-                    <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#0284c7', marginBottom: 5 }}>
-                        💡 Daily Advice for Week {currentWeek}
-                    </Text>
-                    <Text style={{ fontSize: 14, color: '#333', lineHeight: 20 }}>
-                        {dailyTip}
-                    </Text>
+                <View style={[styles.card, { flex: 1, backgroundColor: '#e0f2fe' }]}>
+                  <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#0284c7', marginBottom: 5 }}>
+                    💡 Daily Advice for Week {currentWeek}
+                  </Text>
+                  <Text style={{ fontSize: 14, color: '#333', lineHeight: 20 }}>
+                    {dailyTip}
+                  </Text>
                 </View>
               </View>
 
@@ -522,24 +505,24 @@ export default function SafeWombDashboard() {
 }
 
 const styles = StyleSheet.create({
-  logoContainer: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
+  logoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 40,
     paddingHorizontal: 10 // Adjust this if it's too close to the edge
   },
-  
+
   // 📍 NEW: This sizes the image to perfectly match your old icon
   logoImage: {
     width: 32,
     height: 32,
     marginRight: 8, // Adds a nice little gap between the image and the text
   },
-  
-  logoText: { 
-    fontSize: 24, 
-    fontWeight: 'bold', 
-    color: '#333' 
+
+  logoText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333'
   },
   dashboardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 30, paddingTop: 30, paddingBottom: 10 },
   greetingText: { fontSize: 16, color: '#7a9070', marginBottom: 2, fontWeight: '600', letterSpacing: 0.5 }, // A soft, elegant forest green

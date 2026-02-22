@@ -1,13 +1,80 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useGlobalSearchParams } from 'expo-router';
 
 export default function AppointmentsScreen() {
   const router = useRouter();
+  const params = useGlobalSearchParams();
   
   // State to toggle between tabs
   const [activeTab, setActiveTab] = useState<'doctor' | 'vaccine'>('doctor');
+
+  // --- DYNAMIC DATA SETUP ---
+  const isChildMode = params.mode === 'child';
+  const babyDob = params.babyDob ? String(params.babyDob) : null; 
+  const dueDate = params.dueDate ? String(params.dueDate) : null;
+
+  // 🤰 VACCINES FOR PREGNANCY
+  const pregnancyVaccines = [
+    { id: 'p1', name: 'Influenza (Flu)', timeframe: 'Any trimester', targetWeek: 12, status: false },
+    { id: 'p2', name: 'Tdap', timeframe: '27 - 36 weeks', targetWeek: 27, status: false },
+    { id: 'p3', name: 'RSV', timeframe: '32 - 36 weeks', targetWeek: 32, status: false },
+    { id: 'p4', name: 'COVID-19 Booster', timeframe: 'Any trimester', targetWeek: 12, status: false },
+    { id: 'p5', name: 'Hepatitis B', timeframe: 'If at high risk', targetWeek: 1, status: false },
+  ];
+
+  // 👶 VACCINES FOR BABY
+  const childVaccines = [
+    { id: 'c1', name: 'Hepatitis B (Dose 1)', timeframe: 'At Birth', targetMonths: 0, status: false },
+    { id: 'c2', name: 'Hepatitis B (Dose 2)', timeframe: '1 - 2 Months', targetMonths: 1, status: false },
+    { id: 'c3', name: 'Rotavirus & DTaP', timeframe: '2 Months', targetMonths: 2, status: false },
+    { id: 'c6', name: 'Polio & Pneumococcal', timeframe: '2 Months', targetMonths: 2, status: false },
+    { id: 'c8', name: 'Flu (Influenza)', timeframe: '6 Months', targetMonths: 6, status: false },
+    { id: 'c9', name: 'MMR & Varicella', timeframe: '12 Months', targetMonths: 12, status: false },
+  ];
+
+  const [vaccineList, setVaccineList] = useState(isChildMode ? childVaccines : pregnancyVaccines);
+
+  const toggleVaccine = (id: string) => {
+    setVaccineList(prevList => 
+      prevList.map(vaccine => 
+        vaccine.id === id ? { ...vaccine, status: !vaccine.status } : vaccine
+      )
+    );
+  };
+
+  // --- COUNTDOWN MATH ---
+  const getChildTimeLeft = (targetMonths: number) => {
+    if (!babyDob) return "Date unknown";
+    const targetDate = new Date(babyDob);
+    targetDate.setMonth(targetDate.getMonth() + targetMonths);
+    const today = new Date();
+    const diffTime = targetDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) return `Overdue by ${Math.abs(diffDays)} days`;
+    if (diffDays === 0) return "Due today!";
+    if (diffDays <= 30) return `Due in ${diffDays} days`;
+    return `Due in ${Math.floor(diffDays / 30)} months`;
+  };
+
+  const getPregnancyTimeLeft = (targetWeek: number) => {
+    if (!dueDate) return "Date unknown";
+    const due = new Date(dueDate);
+    const conception = new Date(due);
+    conception.setDate(conception.getDate() - (40 * 7));
+    const targetDate = new Date(conception);
+    targetDate.setDate(targetDate.getDate() + (targetWeek * 7));
+    const today = new Date();
+    const diffTime = targetDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) return `Window opened ${Math.abs(diffDays)} days ago`;
+    if (diffDays === 0) return "Due today!";
+    if (diffDays <= 14) return `Due in ${diffDays} days`;
+    return `Due in ${Math.floor(diffDays / 7)} weeks`;
+  };
 
   return (
     <View style={styles.container}>
@@ -75,35 +142,59 @@ export default function AppointmentsScreen() {
           </View>
 
         ) : (
-          /* --- VACCINATIONS LIST --- */
+          /* --- DYNAMIC VACCINATIONS LIST --- */
           <View>
-            <Text style={styles.sectionHeader}>Baby's Schedule</Text>
+            <Text style={styles.sectionHeader}>
+              {isChildMode ? "Baby's Schedule" : "Pregnancy Immunizations"}
+            </Text>
             
-            <View style={[styles.card, styles.vaccineCard]}>
-              <View style={styles.iconBadge}>
-                <Ionicons name="shield-checkmark" size={24} color="#4bd3a4" />
-              </View>
-              <View style={styles.cardContent}>
-                <Text style={styles.cardTitle}>Hepatitis B (Dose 1)</Text>
-                <Text style={styles.cardSubtitle}>Recommended at Birth</Text>
-                <View style={styles.statusCompleted}>
-                  <Text style={styles.statusTextCompleted}>Completed</Text>
-                </View>
-              </View>
-            </View>
+            {vaccineList.map((vaccine) => {
+              const countdownText = isChildMode 
+                ? getChildTimeLeft(vaccine.targetMonths) 
+                : getPregnancyTimeLeft(vaccine.targetWeek);
+              const isOverdue = countdownText.includes('Overdue');
 
-            <View style={styles.card}>
-              <View style={[styles.iconBadge, {backgroundColor: '#ffe9d6'}]}>
-                <Ionicons name="shield" size={24} color="#ff9800" />
-              </View>
-              <View style={styles.cardContent}>
-                <Text style={styles.cardTitle}>Polio (IPV) & DTaP</Text>
-                <Text style={styles.cardSubtitle}>Due at 2 Months</Text>
-                <TouchableOpacity style={styles.actionButton}>
-                  <Text style={styles.actionButtonText}>Book Now</Text>
+              return (
+                <TouchableOpacity 
+                  key={vaccine.id} 
+                  style={[styles.card, vaccine.status && styles.vaccineCompletedCard]} 
+                  onPress={() => toggleVaccine(vaccine.id)}
+                >
+                  <View style={[styles.iconBadge, vaccine.status && { backgroundColor: '#eef8f5' }]}>
+                    <Ionicons 
+                      name={vaccine.status ? "shield-checkmark" : "shield-half"} 
+                      size={24} 
+                      color={vaccine.status ? "#4bd3a4" : "#ff9800"} 
+                    />
+                  </View>
+                  
+                  <View style={styles.cardContent}>
+                    <Text style={[styles.cardTitle, vaccine.status && styles.vaccineCompletedText]}>
+                      {vaccine.name}
+                    </Text>
+                    <Text style={styles.cardSubtitle}>Schedule: {vaccine.timeframe}</Text>
+                    
+                    {/* The Status / Countdown Logic */}
+                    {vaccine.status ? (
+                      <View style={styles.statusCompleted}>
+                        <Text style={styles.statusTextCompleted}>Completed</Text>
+                      </View>
+                    ) : (
+                      <Text style={[
+                        styles.cardDetail, 
+                        { marginTop: 4, fontWeight: 'bold', color: isOverdue ? '#ff5252' : '#f57f17' }
+                      ]}>
+                        ⏱️ {countdownText}
+                      </Text>
+                    )}
+                  </View>
+
+                  <View style={[styles.checkbox, vaccine.status && styles.checkboxCompleted]}>
+                    {vaccine.status && <Ionicons name="checkmark" size={18} color="#fff" />}
+                  </View>
                 </TouchableOpacity>
-              </View>
-            </View>
+              );
+            })}
           </View>
         )}
 
@@ -131,28 +222,29 @@ const styles = StyleSheet.create({
   tabText: { fontSize: 15, fontWeight: '600', color: '#888', marginLeft: 8 },
   activeTabText: { color: '#fff' },
 
-  scrollContent: { padding: 20, paddingBottom: 100 }, // Extra padding for the FAB
+  scrollContent: { padding: 20, paddingBottom: 100 }, 
   sectionHeader: { fontSize: 18, fontWeight: 'bold', color: '#555', marginBottom: 15, marginTop: 10 },
   
   card: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 15, padding: 15, marginBottom: 15, shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 10, elevation: 2, alignItems: 'center' },
-  vaccineCard: { opacity: 0.8 }, // Slightly faded for completed ones
+  vaccineCompletedCard: { opacity: 0.7 },
   
   dateBadge: { backgroundColor: '#eef8f5', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 15, alignItems: 'center', justifyContent: 'center', marginRight: 15, height: 65, width: 65 },
   dateMonth: { fontSize: 12, fontWeight: 'bold', color: '#4bd3a4', textTransform: 'uppercase' },
   dateDay: { fontSize: 22, fontWeight: 'bold', color: '#333' },
   
-  iconBadge: { backgroundColor: '#eef8f5', borderRadius: 12, height: 60, width: 60, alignItems: 'center', justifyContent: 'center', marginRight: 15 },
+  iconBadge: { backgroundColor: '#ffe9d6', borderRadius: 12, height: 60, width: 60, alignItems: 'center', justifyContent: 'center', marginRight: 15 },
   
-  cardContent: { flex: 1 },
+  cardContent: { flex: 1, paddingRight: 10 },
   cardTitle: { fontSize: 16, fontWeight: 'bold', color: '#333', marginBottom: 4 },
   cardSubtitle: { fontSize: 14, color: '#666', marginBottom: 4 },
   cardDetail: { fontSize: 13, color: '#999' },
+  vaccineCompletedText: { textDecorationLine: 'line-through', color: '#888' },
   
   statusCompleted: { backgroundColor: '#eef8f5', paddingVertical: 4, paddingHorizontal: 10, borderRadius: 10, alignSelf: 'flex-start', marginTop: 5 },
   statusTextCompleted: { color: '#4bd3a4', fontSize: 12, fontWeight: 'bold' },
   
-  actionButton: { backgroundColor: '#fff9c4', paddingVertical: 6, paddingHorizontal: 15, borderRadius: 15, alignSelf: 'flex-start', marginTop: 5, borderWidth: 1, borderColor: '#fbc02d' },
-  actionButtonText: { color: '#f57f17', fontSize: 12, fontWeight: 'bold' },
+  checkbox: { width: 26, height: 26, borderRadius: 13, borderWidth: 2, borderColor: '#ccc', justifyContent: 'center', alignItems: 'center', marginLeft: 5 },
+  checkboxCompleted: { backgroundColor: '#4bd3a4', borderColor: '#4bd3a4' },
 
   fab: { position: 'absolute', bottom: 30, right: 30, width: 60, height: 60, borderRadius: 30, backgroundColor: '#4bd3a4', justifyContent: 'center', alignItems: 'center', shadowColor: '#4bd3a4', shadowOpacity: 0.4, shadowRadius: 10, elevation: 5 },
 });
