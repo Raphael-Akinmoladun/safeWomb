@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { LineChart, ProgressChart } from 'react-native-chart-kit';
 import { useRouter, useGlobalSearchParams } from 'expo-router';
+
 const getGreeting = () => {
   const hour = new Date().getHours();
   if (hour < 12) return 'Good Morning';
@@ -31,7 +32,7 @@ export default function SafeWombDashboard() {
 
   // 📍 NEW: State to control our custom warning popup!
   const [showWarningModal, setShowWarningModal] = useState(false);
-
+  const [dailyTip, setDailyTip] = useState<string>("Tuning into SafeWomb AI...");
   const [latestAiResponse, setLatestAiResponse] = useState<string | null>(null);
 
   const [userName, setUserName] = useState("Mother");
@@ -51,6 +52,45 @@ export default function SafeWombDashboard() {
   const screenWidth = Dimensions.get('window').width;
   const chartWidth = screenWidth > 768 ? screenWidth - 380 : Math.max(screenWidth - 80, 250);
 
+  const calculatePregnancyWeek = (dueDateString: string) => {
+    const due = new Date(dueDateString);
+    const today = new Date();
+    const diffTime = due.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const weeksLeft = Math.floor(diffDays / 7);
+    let calculatedWeek = 40 - weeksLeft;
+
+    if (calculatedWeek < 1) return 1;
+    if (calculatedWeek > 42) return 42;
+    return calculatedWeek;
+  };
+
+  let currentWeek = calculatePregnancyWeek(dueDate);
+  if (overrideWeek !== null && !isNaN(overrideWeek)) {
+    currentWeek = overrideWeek;
+  }
+
+  useEffect(() => {
+    const fetchDailyTip = async () => {
+      try {
+        // Remember to use your actual backend IP if testing on a physical phone!
+        const response = await fetch(`http://localhost:5000/api/daily-tip?week=${currentWeek}`);
+        const result = await response.json();
+
+        if (result.success) {
+          setDailyTip(result.tip);
+        } else {
+          setDailyTip("Make sure to drink plenty of water and rest today!"); // Fallback tip
+        }
+      } catch (error) {
+        console.error("Error fetching daily tip:", error);
+        setDailyTip("Remember to take your prenatal vitamins today!"); // Fallback tip if network fails
+      }
+    };
+
+    fetchDailyTip();
+  }, [currentWeek]);
+
   useEffect(() => {
     if (params.babyDob) setBabyDob(String(params.babyDob));
     if (params.userName) setUserName(String(params.userName));
@@ -66,6 +106,7 @@ export default function SafeWombDashboard() {
       if (params.dueDate) setDueDate(String(params.dueDate));
     }
   }, [params]);
+
   // --- ANIMATION STATE ---
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
   const slideAnim = React.useRef(new Animated.Value(15)).current;
@@ -135,7 +176,6 @@ export default function SafeWombDashboard() {
     }
   };
 
-
   const confirmBirth = () => {
     setShowBirthModal(false);
     router.push('/baby-setup');
@@ -180,7 +220,6 @@ export default function SafeWombDashboard() {
     setShowDateModal(false);
     setTempWeek(""); // Clear the input box for next time
   };
-
 
   const timelineInfo = getTimelineData(currentWeek);
   const progressFraction = Math.min(currentWeek / 40, 1);
@@ -313,7 +352,6 @@ export default function SafeWombDashboard() {
           </TouchableOpacity>
         </View>
 
-
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {!isChildMode ? (
             <View>
@@ -380,6 +418,7 @@ export default function SafeWombDashboard() {
               </View>
 
               <Text style={styles.sectionTitle}>What to Expect</Text>
+              
               {latestAiResponse && (
                 <>
                   <Text style={styles.sectionTitle}>✨ Latest AI Insight</Text>
@@ -391,12 +430,17 @@ export default function SafeWombDashboard() {
                   </View>
                 </>
               )}
+              
+              {/* Note the proper closing of the topRow view here to prevent layout breaks! */}
               <View style={styles.topRow}>
-                <View style={[styles.card, { flex: 1, marginRight: 15, backgroundColor: '#ffe9d6', padding: 20 }]}>
-                  <Text style={[styles.cardTitle, { fontSize: 16 }]}>This Week</Text>
-                  <Text style={[styles.cardSubtitle, { marginTop: 10 }]}>{timelineInfo.desc}</Text>
+                <View style={[styles.card, { flex: 1, backgroundColor: '#e0f2fe' }]}> 
+                    <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#0284c7', marginBottom: 5 }}>
+                        💡 Daily Advice for Week {currentWeek}
+                    </Text>
+                    <Text style={{ fontSize: 14, color: '#333', lineHeight: 20 }}>
+                        {dailyTip}
+                    </Text>
                 </View>
-                <View style={[styles.card, { flex: 1, backgroundColor: '#d6f0ff' }]} />
               </View>
 
               <Text style={styles.sectionTitle}>Journal</Text>
@@ -468,6 +512,7 @@ export default function SafeWombDashboard() {
               <View style={styles.chartCard}>
                 <LineChart data={growthData} width={chartWidth} height={220} chartConfig={chartConfig} bezier style={{ borderRadius: 15, paddingVertical: 10 }} />
               </View>
+
             </View>
           )}
         </ScrollView>
