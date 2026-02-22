@@ -1,12 +1,14 @@
 // The new SDK exports "GoogleGenAI"
 const { GoogleGenAI } = require('@google/genai');
 const HealthLog = require('../models/HealthLog');
+const smsService = require('../services/smsService');
 require('dotenv').config();
 
 // 2. INITIALIZE WITH THE NEW CLASS
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 exports.analyzePregnancy = async (req, res) => {
+
     try {
         const { week, symptoms, userId } = req.body;
 
@@ -47,6 +49,13 @@ exports.analyzePregnancy = async (req, res) => {
         const aiText = response.candidates[0].content.parts[0].text;
         let cleanedText = aiText.replace(/```json/g, '').replace(/```/g, '').trim();
         const analysisData = JSON.parse(cleanedText);
+
+        // Trigger SMS only if risk is high and a phone number is provided
+        if (analysisData.riskLevel === "High") {
+            const alertMessage = `SafeWomb Alert: High Risk detected for week ${week}. Advice: ${analysisData.advice}`;
+            // Assuming the user's phone is sent in the request body
+            await smsService.sendSMS(req.body.phoneNumber, alertMessage); 
+        }
 
         const newLog = new HealthLog({
             userId: userId || "AnonymousUser",

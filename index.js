@@ -7,7 +7,6 @@ const { GoogleGenAI } = require('@google/genai');
 require('dotenv').config(); // Loads your .env file
 
 // --- IMPORT CONTROLLERS & ROUTES ---
-const analysisController = require('./controllers/analysisController');
 const analysisRoutes = require('./routes/analysis.routes'); // We will use this in the next step!
 
 const app = express();
