@@ -116,7 +116,7 @@ exports.getDailyTip = async (req, res) => {
         const prompt = `Act as a warm, supportive obstetrician. Give exactly ONE short, encouraging, and highly specific daily tip (maximum 2 sentences) for a mother who is in week ${week} of her pregnancy. Do not use formatting like bolding or asterisks.`;
 
         const response = await ai.models.generateContent({
-            model: 'gemini-1.5-flash',
+            model: 'gemini-2.5-flash',
             contents: prompt,
         });
 
